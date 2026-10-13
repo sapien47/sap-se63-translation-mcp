@@ -31,12 +31,21 @@ Exported from ABAP Platform release 816 (SAP ABAP Cloud Developer Trial).
    chmod 664 /usr/sap/trans/cofiles/K900167.A4H /usr/sap/trans/data/R900167.A4H
    ```
    Docker trial system: `docker cp K900167.A4H <container>:/usr/sap/trans/cofiles/` (same for the data file).
+
+   **No OS access?** Upload the files from your PC with SAP GUI instead (needs `S_DATASET` write authorization;
+   read SAP Note 1949906 first):
+   - AL11 → check where `DIR_TRANS` points (usually `/usr/sap/trans`).
+   - CG3Z → source = the file on your PC, target = `/usr/sap/trans/cofiles/K900167.A4H`, transfer format **BIN**
+     → *Upload*. Repeat for `R900167.A4H` → `/usr/sap/trans/data/R900167.A4H`.
+   - The files are written by the SAP work process, so they already belong to `<sid>adm` – no `chown` needed.
+     Check the sizes (607 and 86,247 bytes) in AL11 or with `EPS2_GET_DIRECTORY_LISTING`.
 2. **Add to the import queue:** STMS → *Import Overview* → your system → *Extras → Other Requests → Add* →
    `A4HK900167` → confirm.
    (Command line: `tp addtobuffer A4HK900167 <SID> client=<client> pf=/usr/sap/trans/bin/TP_DOMAIN_<DC>.PFL`)
 3. **Import:** select the request → *Import Request* → target client → tab *Options*:
    - ☑ *Ignore Invalid Component Version* (the request comes from another system / release)
-   - ☑ *Overwrite Originals*
+   - ☑ *Overwrite Originals* – only needed when the objects already exist in your system
+     (e.g. a re-import). For a first install into a system without `ZMCP_*` objects, leave it unticked.
 4. **Activate the ICF service** – imported ICF services are inactive for security reasons:
    SICF → `default_host/sap/bc/zmcp_transl` → right-click → *Activate Service*.
    Check tab *Logon Data*: procedure **Standard**, no fixed user.

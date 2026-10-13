@@ -32,7 +32,11 @@ When the user asks you to **install** it, follow these steps exactly.
    - **Never** ask for the password in the chat, never put it in a file, env var or command line.
    - macOS: ask the user to run in **their own terminal** (input is hidden):
      `security add-generic-password -U -s sap-se63-mcp -a <USER> -w`
-   - Windows/Linux: explain `SAP_PASSWORD_CMD` in `mcp-server/.env` (1Password CLI, `secret-tool`).
+   - Windows: ask the user to run in **their own PowerShell window** (not an embedded terminal; input is hidden):
+     `powershell -NoProfile -ExecutionPolicy Bypass -File <repo>\mcp-server\scripts\windows-password.ps1 -Store -User <USER>`
+     and set `SAP_PASSWORD_CMD=powershell -NoProfile -ExecutionPolicy Bypass -File <repo>\mcp-server\scripts\windows-password.ps1`
+     in `mcp-server/.env` (no quotes, path without spaces).
+   - Linux: explain `SAP_PASSWORD_CMD` in `mcp-server/.env` (1Password CLI, `secret-tool`).
 7. **Test:** after the user confirms, run `npm run setup -- --yes --no-claude` again.
    Step 3/4 must show `connected: system …`.
    Typical errors: HTTP 401 → user/password/client; 403/404 → SICF service not active

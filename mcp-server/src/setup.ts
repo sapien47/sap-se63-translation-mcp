@@ -153,6 +153,16 @@ async function main() {
     } else {
       warn(`run this in YOUR terminal (it asks for the password, hidden):\n      ${keychainCmd}`);
     }
+  } else if (platform() === "win32") {
+    const helper = join(projectDir, "scripts", "windows-password.ps1");
+    const psCmd = `powershell -NoProfile -ExecutionPolicy Bypass -File ${helper}`;
+    warn(
+      "Windows: store the password once with the DPAPI helper (run in YOUR PowerShell window, input is hidden):\n" +
+        `      ${psCmd} -Store -User ${user}\n` +
+        "      then add this line to .env and run setup again:\n" +
+        `      SAP_PASSWORD_CMD=${psCmd}` +
+        (/\s/.test(helper) ? "\n      ⚠ the path contains spaces – move the repo to a path without spaces." : ""),
+    );
   } else {
     warn(
       "No keychain support on this OS. Set SAP_PASSWORD_CMD in .env to a command that prints the password,\n" +

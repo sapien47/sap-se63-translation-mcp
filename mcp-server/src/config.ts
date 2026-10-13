@@ -108,10 +108,11 @@ export async function resolvePassword(cfg: Config): Promise<string> {
   }
   if (cfg.password) return (cachedPassword = cfg.password);
 
-  throw new Error(
-    `No SAP password found (${errors.join("; ") || "nothing configured"}). ` +
-      `Store it once in the macOS keychain:  security add-generic-password -s ${cfg.keychainService} -a ${cfg.user || "<SAP_USER>"} -w`,
-  );
+  const hint =
+    process.platform === "win32"
+      ? `Store it once with  mcp-server\\scripts\\windows-password.ps1 -Store -User ${cfg.user || "<SAP_USER>"}  and set SAP_PASSWORD_CMD (see README → Windows)`
+      : `Store it once in the macOS keychain:  security add-generic-password -s ${cfg.keychainService} -a ${cfg.user || "<SAP_USER>"} -w`;
+  throw new Error(`No SAP password found (${errors.join("; ") || "nothing configured"}). ${hint}`);
 }
 
 /** Forget the cached password, e.g. after HTTP 401 (password changed). */

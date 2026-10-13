@@ -1,5 +1,11 @@
 # SAP SE63 Translation MCP Server
 
+> **Fork note.** This is a fork of [AlexRyzhikov/sap-se63-translation-mcp](https://github.com/AlexRyzhikov/sap-se63-translation-mcp) –
+> all credit for the MCP server and the ABAP side goes to the original author.
+> This fork adds **Windows support for the password** ([below](#windows-password)), a way to install the
+> transport files **without OS access** (CG3Z, see [`transport/README.md`](transport/README.md)), and was
+> tested end to end on an S/4HANA 2023 system (SAP_BASIS 758) from Windows 11.
+
 Translate SAP development objects – CDS views, metadata extensions, Fiori/UI5 apps,
 data elements, messages, text pools, service definitions, SE71 forms, SO10 texts … – **with Claude**, through
 the same API that transaction **SE63** uses.
@@ -47,7 +53,7 @@ npm run setup       # asks connection data, stores password, tests, registers in
 | Step | What | Where |
 |---|---|---|
 | 1 | URL, client, user, language, certificates | `mcp-server/.env` (no password) |
-| 2 | password | macOS keychain (hidden input). Other OS: `SAP_PASSWORD_CMD` |
+| 2 | password | macOS keychain (hidden input). Windows: DPAPI helper ([below](#windows-password)). Other OS: `SAP_PASSWORD_CMD` |
 | 3 | connection test (`ping`) | – |
 | 4 | register the server | `claude_desktop_config.json` (merged, backup `.bak`) |
 
@@ -59,12 +65,33 @@ Then quit Claude Desktop completely and start it again → *"Ping SAP"*.
 
 Claude Code instead of Desktop: `claude mcp add sap-se63-translation -- node /path/to/mcp-server/dist/index.js`
 
+### Windows password
+
+Windows has no `security` command, so the password comes from `SAP_PASSWORD_CMD`. The helper
+[`mcp-server/scripts/windows-password.ps1`](mcp-server/scripts/windows-password.ps1) needs no extra software:
+it encrypts the password with Windows DPAPI, so only your Windows user on this PC can read it back.
+
+1. Store it once – in a normal PowerShell window (input is hidden; avoid embedded IDE terminals, which can
+   inject stray characters):
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File C:\path\to\mcp-server\scripts\windows-password.ps1 -Store -User MYUSER
+   ```
+   The encrypted file goes to `%APPDATA%\sap-se63-mcp\MYUSER.pwd`.
+2. Add to `mcp-server/.env` (no quotes; the path must not contain spaces):
+   ```
+   SAP_PASSWORD_CMD=powershell -NoProfile -ExecutionPolicy Bypass -File C:\path\to\mcp-server\scripts\windows-password.ps1
+   ```
+3. `npm run setup -- --yes --no-claude` → step 3/4 shows `connected: system …`.
+
+The helper writes UTF-8, so passwords with characters such as `é` or `§` arrive unchanged.
+
 ### SAP side (once per system) – choose one way
 
 **A) Transport files (easiest, no abapGit):** download [`transport/`](transport) –
 `K900167.A4H` → `/usr/sap/trans/cofiles`, `R900167.A4H` → `/usr/sap/trans/data` →
-STMS: add request `A4HK900167` to the import queue → import (*Ignore Invalid Component Version*,
-*Overwrite Originals*) → **activate** the service `/sap/bc/zmcp_transl` in SICF.
+STMS: add request `A4HK900167` to the import queue → import (*Ignore Invalid Component Version*;
+*Overwrite Originals* only for a re-import) → **activate** the service `/sap/bc/zmcp_transl` in SICF.
+No OS access? Upload the two files with transaction CG3Z (see [`transport/README.md`](transport/README.md)).
 Contains the package `ZMCP_TRANSLATION`, all 4 classes and the ICF service.
 Step by step: [`transport/README.md`](transport/README.md).
 
@@ -112,7 +139,8 @@ Languages: ISO (`DE`), SAP key (`D`) or LXE (`deDE`).
 
 ## Security
 
-- No password in any file. macOS keychain, or `SAP_PASSWORD_CMD` (1Password CLI, `secret-tool`, …).
+- No password in plain text in any file. macOS keychain, Windows DPAPI helper, or `SAP_PASSWORD_CMD`
+  (1Password CLI, `secret-tool`, …).
 - The ICF handler checks `S_TCODE` = `SE63`; SE63's own authorizations apply.
 - `SAP_ALLOW_SELF_SIGNED=true` only for local/test systems. Better: `NODE_EXTRA_CA_CERTS=/path/ca.pem`.
 
